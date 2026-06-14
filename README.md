@@ -108,7 +108,7 @@ StatReport uses its built-in Python engine and renders self-contained HTML.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e ".[desktop]"   # omit [desktop] for headless/server use (no pywebview)
 ```
 
 ## Run the GUI

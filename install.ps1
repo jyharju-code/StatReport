@@ -24,7 +24,7 @@ uv venv --python $PyVer "$AppDir\.venv"
 $Py = "$AppDir\.venv\Scripts\python.exe"
 
 Write-Host "  Installing dependencies (one time)..."
-uv pip install --python $Py "statreport @ $RepoTarball"
+uv pip install --python $Py "statreport[desktop] @ $RepoTarball"
 
 @"
 @echo off

@@ -34,7 +34,7 @@ mkdir -p "$APP_DIR"
 PY="$APP_DIR/.venv/bin/python"
 
 echo "   Downloading and installing dependencies (one time)…"
-"$UV" pip install --python "$PY" "statreport @ $REPO_TARBALL"
+"$UV" pip install --python "$PY" "statreport[desktop] @ $REPO_TARBALL"
 
 cat > "$LAUNCHER" <<EOF
 #!/bin/bash
