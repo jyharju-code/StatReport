@@ -146,31 +146,32 @@ def render(recipe: ReportRecipe, narrative: Dict[str, str], results: dict,
     out_path = os.path.join(work_dir, f"{stem}{_EXT[fmt]}")
     want_r = engine in ("auto", "r")
 
-    # 1) Quarto
+    # 1) Quarto. Invoke with a cwd-relative input filename: quarto canonicalises cwd
+    #    (e.g. /tmp -> /private/tmp on macOS), and an absolute input path then makes it
+    #    compute a broken relative --output. A bare filename + cwd avoids that entirely.
     if want_r and has_quarto():
-        try:
-            subprocess.run(["quarto", "render", qmd_path, "--to", fmt,
-                            "--output", os.path.basename(out_path)],
-                           capture_output=True, text=True, timeout=600, check=True,
-                           cwd=work_dir)
-            if os.path.exists(out_path):
-                log.append(f"Rendered with Quarto -> {fmt}.")
-                return _ok(out_path, qmd_path, results, "quarto")
-        except Exception as exc:
-            log.append(f"Quarto render failed ({str(exc)[:100]}); falling back.")
+        # PDF via Typst (bundled with Quarto) needs no LaTeX install — robust on any
+        # machine that has Quarto. LaTeX PDF is fragile (TinyTeX package auto-install),
+        # so we never depend on it.
+        quarto_to = "typst" if fmt == "pdf" else fmt
+        proc = subprocess.run(["quarto", "render", os.path.basename(qmd_path),
+                               "--to", quarto_to, "--output", os.path.basename(out_path)],
+                              capture_output=True, text=True, timeout=600, cwd=work_dir)
+        if proc.returncode == 0 and os.path.exists(out_path):
+            log.append(f"Rendered with Quarto ({quarto_to}) -> {fmt}.")
+            return _ok(out_path, qmd_path, results, "quarto")
+        log.append("Quarto render failed (" + _tail(proc) + "); falling back.")
 
     # 2) pandoc
     if has_pandoc() and fmt in ("pdf", "docx", "html"):
-        try:
-            subprocess.run(["pandoc", md_path, "-o", out_path, "--standalone",
-                            "--resource-path", work_dir],
-                           capture_output=True, text=True, timeout=600, check=True,
-                           cwd=work_dir)
-            if os.path.exists(out_path):
-                log.append(f"Rendered with pandoc -> {fmt}.")
-                return _ok(out_path, qmd_path, results, "pandoc")
-        except Exception as exc:
-            log.append(f"pandoc render failed ({str(exc)[:100]}); falling back.")
+        proc = subprocess.run(["pandoc", os.path.basename(md_path), "-o",
+                               os.path.basename(out_path), "--standalone",
+                               "--resource-path", work_dir],
+                              capture_output=True, text=True, timeout=600, cwd=work_dir)
+        if proc.returncode == 0 and os.path.exists(out_path):
+            log.append(f"Rendered with pandoc -> {fmt}.")
+            return _ok(out_path, qmd_path, results, "pandoc")
+        log.append("pandoc render failed (" + _tail(proc) + "); falling back.")
 
     # 3) Python fallback -> self-contained HTML
     html = _markdown_to_html(recipe, body, work_dir)
@@ -191,6 +192,12 @@ def render(recipe: ReportRecipe, narrative: Dict[str, str], results: dict,
 
 def _ok(out_path, qmd_path, results, renderer) -> dict:
     return {"out_path": out_path, "artifact_path": qmd_path, "renderer": renderer}
+
+
+def _tail(proc) -> str:
+    """Last meaningful line of a failed renderer's output, for the run log."""
+    lines = [ln for ln in (proc.stderr or proc.stdout or "").splitlines() if ln.strip()]
+    return lines[-1][:160] if lines else "no output"
 
 
 # ---- python HTML rendering ---- #

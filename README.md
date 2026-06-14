@@ -35,6 +35,23 @@ Two modes:
 When the example report is a **PDF or DOCX**, the file itself is handed to the multimodal model so
 it can read the document's layout — the direct parallel to EditMyRaw feeding the reference image.
 
+## What you need — and what's optional
+
+**Out of the box you only need what the installer brings (a managed Python).** With just that,
+StatReport produces full **HTML** reports with every statistic, table, and chart. R and Quarto are
+*optional upgrades* — install them and StatReport uses them automatically; skip them and nothing
+breaks. So if you share this with someone, the honest summary is: **"it works without anything
+extra — install R and Quarto only if you want fancier tables and PDF/Word output."**
+
+| Tier | What to install | What you get |
+|---|---|---|
+| **Out of the box** | nothing extra (installer brings Python) | HTML reports, all analyses, charts, QA grounding |
+| **+ R** | `statreport setup-r` | richer tables (gtsummary, modelsummary, easystats `report`) |
+| **+ Quarto** | [Quarto](https://quarto.org/) only — no LaTeX needed | polished **PDF** (via bundled Typst) and **DOCX** |
+
+The format selector and `--format` always succeed: if PDF/DOCX tooling is missing, StatReport says so
+in the run log and writes a self-contained HTML report instead — never an error, never a blank page.
+
 ## Two engines (it always produces a report)
 
 | | Compute | Render |
