@@ -123,6 +123,19 @@ statreport web --browser   # old behaviour: open a browser tab instead
 
 If no webview backend is available, it falls back to a browser tab automatically.
 
+### A clickable app (macOS)
+
+To get a real double-clickable **StatReport.app** (opens in a native window, shows in
+Launchpad / Spotlight / the app switcher, closing the window quits it):
+
+```bash
+./make_app.sh           # builds ~/Applications/StatReport.app + a `statreport` CLI shim
+```
+
+The locally-built app uses the default applet icon; the branded icon ships with the
+PyInstaller release build. (The `statreport` command itself only lives inside the venv —
+`make_app.sh` symlinks it into `~/.local/bin` so it works from any terminal.)
+
 ## CLI
 
 ```bash
