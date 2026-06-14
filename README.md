@@ -74,8 +74,18 @@ irm https://raw.githubusercontent.com/jyharju-code/StatReport/main/install.ps1 |
 
 Then add a free [Gemini API key](https://aistudio.google.com/apikey) in the app's settings panel.
 
-**Optional rich engine:** install [R](https://www.r-project.org/) and
-[Quarto](https://quarto.org/), then in R: `install.packages(c("jsonlite","ggplot2","gtsummary","modelsummary","report","janitor"))`.
+**Rich R engine (recommended):** the installer can set it up for you — re-run the one-liner with
+`STATREPORT_WITH_R=1` and it installs R + pandoc (via Homebrew on macOS / winget on Windows) and the
+R packages automatically:
+
+```bash
+STATREPORT_WITH_R=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/jyharju-code/StatReport/main/install.sh)"
+```
+
+Already have R? Just run `statreport setup-r` to install the packages
+(`jsonlite`, `ggplot2`, `gtsummary`, `modelsummary`, easystats `report`, `janitor`, …). For polished
+PDF/DOCX add [Quarto](https://quarto.org/) (`brew install --cask quarto`). Without any of this,
+StatReport uses its built-in Python engine and renders self-contained HTML.
 
 ## Install from source (developers)
 
@@ -108,6 +118,9 @@ statreport report --data sales.csv --example example.pdf --workflow combo \
 statreport key --set "AIza..."   # save locally
 statreport key --show            # masked status
 statreport key --clear
+
+# Rich R engine: install the R packages (needs R already on PATH):
+statreport setup-r
 ```
 
 ## How it works

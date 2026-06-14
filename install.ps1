@@ -31,6 +31,21 @@ uv pip install --python $Py "statreport @ $RepoTarball"
 "$Py" -m statreport.cli web
 "@ | Set-Content -Encoding ASCII $Launcher
 
+# Optional rich R engine. Set STATREPORT_WITH_R=1 to auto-install R (via winget) + R packages.
+if ($env:STATREPORT_WITH_R -eq "1") {
+  Write-Host "  Setting up the rich R engine (STATREPORT_WITH_R=1)..."
+  if (-not (Get-Command Rscript -ErrorAction SilentlyContinue) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+    winget install --silent --accept-package-agreements --accept-source-agreements RProject.R
+    winget install --silent --accept-package-agreements --accept-source-agreements JohnMacFarlane.Pandoc
+  }
+  if (Get-Command Rscript -ErrorAction SilentlyContinue) {
+    & $Py -m statreport.cli setup-r
+    Write-Host "  (For polished PDF/DOCX, also install Quarto: https://quarto.org)"
+  } else {
+    Write-Host "  R not found. Install it from https://cloud.r-project.org, then run: statreport setup-r"
+  }
+}
+
 Write-Host ""
 Write-Host "Installed. Double-click 'StatReport.cmd' on your Desktop to start."
 Write-Host "Add a free Gemini API key in the app (Settings). https://aistudio.google.com/apikey"

@@ -33,12 +33,17 @@ def main(argv=None) -> None:
     k.add_argument("--clear", action="store_true")
 
     sub.add_parser("web", help="Launch the browser GUI.")
+    sub.add_parser("setup-r", help="Install the R packages the rich engine uses.")
 
     args = parser.parse_args(argv)
 
     if args.cmd == "web":
         from .server import main as web_main
         web_main()
+        return
+
+    if args.cmd == "setup-r":
+        setup_r()
         return
 
     if args.cmd == "key":
@@ -78,6 +83,33 @@ def main(argv=None) -> None:
         print(f"Source: {res['artifact_path']}  (re-render anytime)")
         print(f"QA: {res['qa']['score']}/100 grounded "
               f"({res['qa']['verified']}/{res['qa']['checked']} numeric claims).")
+
+
+def setup_r() -> None:
+    """Set up the rich R engine: check R/Quarto/pandoc, install the R packages."""
+    import shutil
+    import subprocess
+
+    rscript = shutil.which("Rscript")
+    if rscript is None:
+        print("R is not installed. Install it first:")
+        if sys.platform == "darwin":
+            print("  brew install r            # or download from https://cloud.r-project.org")
+        elif sys.platform.startswith("win"):
+            print("  winget install RProject.R  # or https://cloud.r-project.org")
+        else:
+            print("  use your package manager, or https://cloud.r-project.org")
+        print("Optional for PDF/DOCX: install Quarto (https://quarto.org) or pandoc.")
+        return
+
+    print(f"Found R: {rscript}")
+    for tool in ("quarto", "pandoc"):
+        found = shutil.which(tool)
+        print(f"  {tool}: {found or 'not found (HTML still works; needed for polished PDF/DOCX)'}")
+
+    from .rcode import bootstrap_r_code
+    print("Installing/verifying StatReport R packages (this can take a while on first run)…")
+    subprocess.run([rscript, "-e", bootstrap_r_code()])
 
 
 if __name__ == "__main__":

@@ -42,6 +42,23 @@ exec "$PY" -m statreport.cli web
 EOF
 chmod +x "$LAUNCHER"
 
+# Optional rich R engine. Set STATREPORT_WITH_R=1 to auto-install R + pandoc (via Homebrew)
+# and the R packages (gtsummary, modelsummary, easystats `report`, ggplot2, …).
+if [ "${STATREPORT_WITH_R:-}" = "1" ]; then
+  echo "   Setting up the rich R engine (STATREPORT_WITH_R=1)…"
+  if ! command -v Rscript >/dev/null 2>&1 && command -v brew >/dev/null 2>&1; then
+    echo "   Installing R + pandoc via Homebrew…"
+    brew install r pandoc || true
+  fi
+  if command -v Rscript >/dev/null 2>&1; then
+    "$PY" -m statreport.cli setup-r || true
+    echo "   (For polished PDF/DOCX, also install Quarto: brew install --cask quarto)"
+  else
+    echo "   R not found and Homebrew unavailable. Install R from https://cloud.r-project.org,"
+    echo "   then run:  statreport setup-r"
+  fi
+fi
+
 echo ""
 echo "✓  Installed."
 echo "   → Double-click 'StatReport.command' on your Desktop to start it."

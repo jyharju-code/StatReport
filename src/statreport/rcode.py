@@ -18,7 +18,7 @@ section is wrapped in tryCatch, so one failing analysis never kills the report.
 from __future__ import annotations
 
 import json
-from typing import List
+from typing import List, Optional
 
 from .recipe import ReportRecipe
 
@@ -287,8 +287,22 @@ def build_compute_r(recipe: ReportRecipe, data_path: str, assets_dir: str,
 
 
 # packages the rich path *uses if present* (none are hard requirements beyond the first two)
-RECOMMENDED_R_PACKAGES: List[str] = [
-    "jsonlite", "ggplot2",          # required for the R engine at all
-    "gtsummary", "modelsummary", "report", "janitor",  # ready report tooling, optional
-    "readxl", "arrow", "DBI", "RSQLite",               # extra data formats, optional
-]
+REQUIRED_R_PACKAGES: List[str] = ["jsonlite", "ggplot2"]
+TOOLING_R_PACKAGES: List[str] = ["gtsummary", "modelsummary", "report", "janitor"]
+DATA_R_PACKAGES: List[str] = ["readxl", "arrow", "DBI", "RSQLite"]
+RECOMMENDED_R_PACKAGES: List[str] = (REQUIRED_R_PACKAGES + TOOLING_R_PACKAGES
+                                     + DATA_R_PACKAGES)
+
+
+def bootstrap_r_code(packages: Optional[List[str]] = None) -> str:
+    """R one-liner that installs only the missing recommended packages (idempotent)."""
+    pkgs = packages or RECOMMENDED_R_PACKAGES
+    vec = ", ".join(json.dumps(p) for p in pkgs)
+    return (
+        f"p <- c({vec}); "
+        "m <- p[!vapply(p, requireNamespace, logical(1), quietly = TRUE)]; "
+        'if (length(m)) { cat("Installing:", paste(m, collapse = ", "), "\\n"); '
+        'install.packages(m, repos = "https://cloud.r-project.org") } '
+        'else cat("All StatReport R packages already installed.\\n"); '
+        'for (q in p) cat(sprintf("%-12s %s\\n", q, requireNamespace(q, quietly = TRUE)))'
+    )
