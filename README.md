@@ -113,9 +113,15 @@ pip install -e .
 
 ## Run the GUI
 
+Opens in a **native desktop window** (pywebview) — its own icon, shows in the app switcher,
+closing the window quits the process:
+
 ```bash
-statreport-web          # or: python -m statreport.cli web
+statreport web          # native window  (or: statreport-web)
+statreport web --browser   # old behaviour: open a browser tab instead
 ```
+
+If no webview backend is available, it falls back to a browser tab automatically.
 
 ## CLI
 

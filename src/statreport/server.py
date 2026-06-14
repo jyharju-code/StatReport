@@ -240,12 +240,22 @@ def find_free_port():
         return s.getsockname()[1]
 
 
-def main():
+def run_browser():
+    """Old behaviour: serve and open the default browser tab (blocking, main thread)."""
     port = find_free_port()
     url = f"http://{HOST}:{port}/"
     print(f"StatReport running: {url}")
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     app.run(host=HOST, port=port, threaded=True, debug=False)
+
+
+def main(browser: bool = False):
+    """Default: native desktop window. `browser=True` keeps the old browser-tab mode."""
+    if browser:
+        run_browser()
+        return
+    from .desktop import run_desktop
+    run_desktop(app, find_free_port, host=HOST, title="StatReport")
 
 
 if __name__ == "__main__":

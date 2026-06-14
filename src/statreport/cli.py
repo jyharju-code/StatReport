@@ -32,14 +32,16 @@ def main(argv=None) -> None:
     k.add_argument("--show", action="store_true")
     k.add_argument("--clear", action="store_true")
 
-    sub.add_parser("web", help="Launch the browser GUI.")
+    w = sub.add_parser("web", help="Launch the desktop app (native window).")
+    w.add_argument("--browser", action="store_true",
+                   help="Open in the default browser instead of a native window.")
     sub.add_parser("setup-r", help="Install the R packages the rich engine uses.")
 
     args = parser.parse_args(argv)
 
     if args.cmd == "web":
         from .server import main as web_main
-        web_main()
+        web_main(browser=args.browser)
         return
 
     if args.cmd == "setup-r":
