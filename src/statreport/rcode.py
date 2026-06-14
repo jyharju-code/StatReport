@@ -211,7 +211,7 @@ m_timeseries_forecast <- function(df, vars, grp, tvar, opt, id) {
   d <- df
   if (!is.null(tvar)) { d[[tvar]] <- as.Date(as.character(d[[tvar]])); d <- d[order(d[[tvar]]), ] }
   y <- as.numeric(d[[v]]); y <- y[!is.na(y)]
-  h <- tryCatch(as.integer(opt$horizon), error = function(e) 6L); if (is.na(h)) h <- 6L
+  h <- suppressWarnings(as.integer(opt$horizon)); if (length(h) == 0 || is.na(h)) h <- 6L
   idx <- seq_along(y); fit <- lm(y ~ idx)
   fut <- (length(y) + 1):(length(y) + h)
   fc <- as.numeric(predict(fit, newdata = data.frame(idx = fut)))
@@ -256,9 +256,13 @@ results <- list(engine = "r",
 plan <- fromJSON(PLAN_JSON, simplifyVector = FALSE)
 for (sec in plan) {
   fn <- DISPATCH[[sec$method]]; if (is.null(fn)) fn <- m_descriptive
+  # JSON arrays arrive as R lists -> coerce to the shapes the methods expect.
+  vars <- if (is.null(sec$variables)) character(0) else unlist(sec$variables, use.names = FALSE)
+  grp  <- if (is.null(sec$group_by) || !nzchar(sec$group_by)) NULL else sec$group_by
+  tvar <- if (is.null(sec$time_var) || !nzchar(sec$time_var)) NULL else sec$time_var
   res <- tryCatch({
-      r <- fn(df, sec$variables, sec$group_by, sec$time_var, sec$options, sec$id)
-      r$ok <- TRUE; r$error <- NULL; r
+      r <- fn(df, vars, grp, tvar, sec$options, sec$id)
+      r$ok <- TRUE; if (is.null(r$error)) r$error <- NA; r
     }, error = function(e) list(ok = FALSE, error = substr(conditionMessage(e), 1, 300),
                                 figure = NULL, table_markdown = NA, numbers = list(), summary = ""))
   res$method <- sec$method; res$heading <- sec$heading
