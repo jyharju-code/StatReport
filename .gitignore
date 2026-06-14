@@ -1,0 +1,12 @@
+.venv/
+.venv-build/
+__pycache__/
+*.pyc
+reports/
+StatReport-reports/
+build/
+dist/
+*.egg-info/
+.env
+.secrets*
+# API key is stored in ~/.statreport/config.json (outside the repo) — never here.

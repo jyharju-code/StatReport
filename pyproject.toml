@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "statreport"
+version = "0.1.0"
+description = "Example report + your data -> a statistical report. R/Quarto (or a Python fallback) computes every number; Gemini only plans the recipe and writes the prose."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "matplotlib>=3.6",
+    "statsmodels>=0.13",
+    "pydantic>=2.5",
+    "flask>=3.0",
+    "google-genai>=1.0",
+    "markdown>=3.4",
+    "tabulate>=0.9",
+    "openpyxl>=3.1",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+]
+
+[project.optional-dependencies]
+parquet = ["pyarrow>=12"]
+pdf = ["weasyprint>=60"]   # pure-Python PDF when Quarto/pandoc are absent
+dev = ["pytest>=7"]
+
+[project.scripts]
+statreport = "statreport.cli:main"
+statreport-web = "statreport.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+statreport = ["web/*"]

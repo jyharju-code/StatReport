@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StatReport</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="ap" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#8affd0"/>
+            <stop offset=".5" stop-color="#3fd6b0"/>
+            <stop offset="1" stop-color="#6f8cff"/>
+          </linearGradient>
+        </defs>
+        <rect x="9" y="26" width="6" height="13" rx="1.5" fill="url(#ap)"/>
+        <rect x="21" y="18" width="6" height="21" rx="1.5" fill="url(#ap)"/>
+        <rect x="33" y="9"  width="6" height="30" rx="1.5" fill="url(#ap)"/>
+        <line x1="7" y1="42" x2="41" y2="42" stroke="url(#ap)" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>StatReport</h1>
+        <p class="sub">Example report + your data → a statistical report. The engine computes; the model only writes.</p>
+      </div>
+    </div>
+    <button id="keyChip" class="chip" title="API key settings">Key: …</button>
+  </header>
+
+  <!-- API KEY -->
+  <details class="card" id="settings">
+    <summary>API key &amp; models</summary>
+    <div class="card-body">
+      <p class="hint">Your key is stored locally only (<code id="cfgPath">~/.statreport/config.json</code>,
+        permissions 600) and is never committed. Resolution order: saved key → <code>GEMINI_API_KEY</code> env var.</p>
+      <div class="row">
+        <span class="lbl">Current key</span>
+        <span id="keyState" class="badge">unknown</span>
+      </div>
+      <div class="row">
+        <span class="lbl">Set key</span>
+        <input type="password" id="keyInput" class="grow" placeholder="Paste Gemini API key (AIza… or AQ.…)" autocomplete="off" />
+        <button id="keySave" class="primary small">Save</button>
+        <button id="keyTest" class="small">Test</button>
+        <button id="keyClear" class="small ghost">Clear</button>
+      </div>
+      <div class="row">
+        <span class="lbl">Recipe model</span>
+        <select id="model"></select>
+        <span class="lbl">Narrative model</span>
+        <select id="narrativeModel"></select>
+      </div>
+      <div id="keyMsg" class="hint"></div>
+    </div>
+  </details>
+
+  <!-- SOURCES -->
+  <div class="card">
+    <h2>Sources</h2>
+    <div class="row">
+      <span class="lbl">Data</span>
+      <span id="dataPath" class="path empty">none selected</span>
+      <button id="pickData">Choose files…</button>
+      <button id="pickDataFolder">Choose folder…</button>
+    </div>
+    <div class="row">
+      <span class="lbl">Example report</span>
+      <span id="exPath" class="path empty">none</span>
+      <button id="pickEx">Choose…</button>
+      <button id="exClear" class="ghost small">Clear</button>
+    </div>
+    <div class="row">
+      <span class="lbl">Output folder</span>
+      <span id="outPath" class="path empty">—</span>
+      <button id="pickOut">Choose…</button>
+    </div>
+  </div>
+
+  <!-- WORKFLOW -->
+  <div class="card">
+    <h2>How to build it</h2>
+    <div class="row">
+      <div class="seg" id="workflow">
+        <label><input type="radio" name="wf" value="prompt" checked><span>Prompt</span></label>
+        <label><input type="radio" name="wf" value="example"><span>Example</span></label>
+        <label><input type="radio" name="wf" value="combo"><span>Combination</span></label>
+      </div>
+      <div class="seg" id="mode">
+        <label><input type="radio" name="md" value="faithful" checked><span>Faithful</span></label>
+        <label><input type="radio" name="md" value="creative"><span>Creative</span></label>
+      </div>
+    </div>
+    <div class="row">
+      <textarea id="prompt" rows="3" class="grow"
+        placeholder="Describe the report, e.g. 'Quarterly sales report: trend over time, year-over-year, breakdown by region, and a short forecast. Executive tone, in Finnish.'"></textarea>
+    </div>
+    <div class="grid">
+      <label class="field"><span class="lbl">Format</span>
+        <select id="format"><option value="html">HTML (always works)</option><option value="pdf">PDF (needs Quarto/pandoc)</option><option value="docx">DOCX (needs Quarto/pandoc)</option></select>
+      </label>
+      <label class="field"><span class="lbl">Engine</span>
+        <select id="engine"><option value="auto">Auto (R if present, else Python)</option><option value="r">R / Quarto</option><option value="python">Python</option></select>
+      </label>
+      <label class="field"><span class="lbl">QA rounds</span>
+        <input type="number" id="qaRounds" min="0" max="4" value="2" class="rounds"><span class="hint">narrative revision passes</span>
+      </label>
+      <label class="field toggle"><span class="switch"><input type="checkbox" id="narrative" checked><span class="sl"></span></span>
+        <span>Write narrative (AI prose)</span></label>
+      <label class="field toggle"><span class="switch"><input type="checkbox" id="dryrun"><span class="sl"></span></span>
+        <span>Dry run (no LLM)</span></label>
+    </div>
+    <div id="engineStatus" class="hint"></div>
+  </div>
+
+  <div class="actions">
+    <button id="run" class="primary big">▶ Build report</button>
+    <button id="openReport" class="ghost" hidden>Open report</button>
+    <button id="openOut" class="ghost">Open output folder</button>
+    <div class="progress"><div id="bar"></div></div>
+  </div>
+  <div id="status">Ready.</div>
+
+  <div class="card" id="resultsCard" style="display:none">
+    <h2>Result</h2>
+    <div id="results"></div>
+  </div>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
