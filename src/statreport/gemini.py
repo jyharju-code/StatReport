@@ -68,6 +68,27 @@ RECIPE_SCHEMA = {
     "required": ["title", "tone", "language", "sections"],
 }
 
+TABLES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tables": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "page": {"type": "integer"},
+                    "title": {"type": "string"},
+                    "columns": {"type": "array", "items": {"type": "string"}},
+                    "rows": {"type": "array",
+                             "items": {"type": "array", "items": {"type": "string"}}},
+                },
+                "required": ["columns", "rows"],
+            },
+        },
+    },
+    "required": ["tables"],
+}
+
 NARRATIVE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -136,6 +157,33 @@ class GeminiClient:
             return types.Part.from_bytes(data=data, mime_type=report_profile.mime)
         except Exception:
             return None
+
+    # ------------------------------------------------------------------ #
+    # multimodal table extraction (for the extract pipeline; hard PDFs only)
+    # extract.py grounds every returned number against the PDF's own text.
+    # ------------------------------------------------------------------ #
+    def extract_tables(self, pdf_path: str) -> List[dict]:
+        from google.genai import types
+        try:
+            data = Path(pdf_path).read_bytes()
+        except OSError:
+            return []
+        part = types.Part.from_bytes(data=data, mime_type="application/pdf")
+        prompt = (
+            "Extract every DATA TABLE from this PDF as JSON. Copy each cell value EXACTLY as "
+            "printed — keep all digits, thousands separators, decimals, %, and currency signs. "
+            "Do NOT compute, round, reformat, summarise, or invent any value; if a cell is blank "
+            "use an empty string. Give each table its column headers and rows, and the page number.")
+        response = self._client.models.generate_content(
+            model=self._settings.model, contents=[part, prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", response_schema=TABLES_SCHEMA,
+                temperature=0.0),
+        )
+        try:
+            return json.loads(response.text).get("tables", []) or []
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            return []
 
     # ------------------------------------------------------------------ #
     # 2) narrative — grounded in computed numbers only

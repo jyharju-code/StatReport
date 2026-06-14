@@ -9,6 +9,10 @@ from . import config, data_io, pipeline
 
 def main(argv=None) -> None:
     import argparse
+    import warnings
+    # Silence noisy third-party notices (we intentionally support Python 3.9).
+    for _msg in (r".*past its end of life.*", r".*OpenSSL 1\.1\.1.*", r".*LibreSSL.*"):
+        warnings.filterwarnings("ignore", message=_msg)
     parser = argparse.ArgumentParser(
         prog="statreport",
         description="Example report + your data -> a statistical report (R/Quarto via a Gemini recipe).")
@@ -37,6 +41,13 @@ def main(argv=None) -> None:
                    help="Open in the default browser instead of a native window.")
     sub.add_parser("setup-r", help="Install the R packages the rich engine uses.")
 
+    ex = sub.add_parser("extract", help="Extract tables of numbers from a PDF into CSV.")
+    ex.add_argument("--pdf", required=True, help="PDF to extract tables from.")
+    ex.add_argument("--out", default="extracted", help="Output folder for the CSV(s).")
+    ex.add_argument("--engine", choices=["auto", "pdfplumber", "gemini"], default="auto",
+                    help="auto: pdfplumber, then Gemini if nothing found and a key is set.")
+    ex.add_argument("--pages", help="Limit to pages, e.g. '1-3' or '2'.")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "web":
@@ -46,6 +57,10 @@ def main(argv=None) -> None:
 
     if args.cmd == "setup-r":
         setup_r()
+        return
+
+    if args.cmd == "extract":
+        run_extract(args)
         return
 
     if args.cmd == "key":
@@ -85,6 +100,51 @@ def main(argv=None) -> None:
         print(f"Source: {res['artifact_path']}  (re-render anytime)")
         print(f"QA: {res['qa']['score']}/100 grounded "
               f"({res['qa']['verified']}/{res['qa']['checked']} numeric claims).")
+
+
+def run_extract(args) -> None:
+    """PDF -> data: pull tables of numbers out of a PDF into CSV(s)."""
+    from pathlib import Path
+
+    from . import config, extract
+
+    settings = config.load_settings()
+
+    # Deterministic first — no model, no Google import in the common (ruled-PDF) case.
+    tables = []
+    if args.engine in ("auto", "pdfplumber"):
+        tables = extract.extract_pdf(args.pdf, engine="pdfplumber", pages=args.pages)
+
+    # Gemini only if nothing was found (auto) or explicitly requested.
+    if (not tables and args.engine == "auto") or args.engine == "gemini":
+        if settings.api_key:
+            try:
+                from .gemini import GeminiClient
+                client = GeminiClient(settings)
+                tables = extract.extract_pdf(args.pdf, engine="gemini", pages=args.pages, client=client)
+            except Exception as exc:
+                print("Gemini unavailable:", str(exc)[:140])
+        elif args.engine == "gemini":
+            print("--engine gemini needs a Gemini API key (set one in the GUI or `statreport key --set`).")
+            return
+
+    if not tables:
+        if args.engine == "gemini" or settings.api_key:
+            print("No tables extracted from this PDF.")
+        else:
+            print("No ruled tables found (this PDF may be borderless/typeset/scanned).")
+            print("With a Gemini key set, '--engine gemini' can read it multimodally.")
+        return
+
+    paths = extract.to_csv(tables, args.out, stem=Path(args.pdf).stem)
+    print(f"Extracted {len(tables)} table(s) from {args.pdf}:")
+    for t, p in zip(tables, paths):
+        flag = "" if t.grounding >= 0.999 else \
+            f"  ⚠ grounding {t.grounding * 100:.0f}% — unverified: {', '.join(t.ungrounded[:5])}"
+        print(f"  page {t.page} [{t.source}] {t.n_rows}×{t.n_cols} -> {p}{flag}")
+    if any(t.grounding < 0.999 for t in tables):
+        print("Note: flagged numbers were NOT found in the PDF's own text — verify before use.")
+    print(f"\nAnalyse one:  statreport report --data {paths[0]} --dry-run --out report")
 
 
 def setup_r() -> None:

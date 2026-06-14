@@ -157,7 +157,27 @@ statreport key --clear
 
 # Rich R engine: install the R packages (needs R already on PATH):
 statreport setup-r
+
+# Extract tables of numbers from a PDF into CSV (PDF -> data):
+statreport extract --pdf report.pdf --out tables
 ```
+
+## Extract tables from a PDF (PDF → data)
+
+A separate pipeline for when a PDF is your *data source* rather than a style example:
+
+```bash
+statreport extract --pdf report.pdf --out tables          # one CSV per table
+statreport report  --data tables/report_p1_t1.csv --out out   # then analyse it
+```
+
+- **Deterministic first** — `pdfplumber` reads the actual cell text from the PDF. Exact
+  numbers, no model. Handles ruled/typeset data tables (the common case).
+- **Gemini second** — only for hard PDFs (borderless / scanned) and only with a key
+  (`--engine gemini`, or `auto` falls back when nothing was found). Multimodal extraction.
+- **Grounded either way** — every extracted number's digits are checked against the PDF's
+  own text; anything not found is flagged (`⚠ grounding …`). A model cannot slip a
+  fabricated figure through unnoticed — the same discipline as the report QA pass.
 
 ## How it works
 
@@ -182,7 +202,8 @@ src/statreport/
   data_io.py    load + profile tabular data (the "preview")
   profile.py    parse an example report -> structure/tone profile
   recipe.py     bounded report recipe (pydantic)               [analog of EditMyRaw recipe.py]
-  gemini.py     advisor: recipe, grounded narrative, QA revision
+  extract.py    pull tables of numbers out of a PDF (pdfplumber + grounded Gemini)
+  gemini.py     advisor: recipe, grounded narrative, table extraction, QA revision
   rcode.py      R/Quarto compute-script generator (rich engine)
   pyengine.py   pure-Python compute engine (always-available fallback)
   rengine.py    run compute (R/Python) + render (Quarto/pandoc/HTML)
